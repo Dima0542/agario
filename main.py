@@ -27,8 +27,8 @@ class Ball():
 
     def draw(self, window):
         pygame.draw.circle(window, self.color, (int(self.x), int(self.y)), self.radius)
-        if self.x <= 0: self.x = 0
-        if self.y <= 0: self.y = 0
+        if self.x <= 0 + 20: self.x = 0 + 20
+        if self.y <= 0 + 20: self.y = 0 + 20
         if self.x >= 800 - 20: self.x = 800 - 20
         if self.y >= 600 - 20: self.y = 600 - 20
 
