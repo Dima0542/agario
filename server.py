@@ -78,3 +78,5 @@ def handle_data():
                     conn.send(f"{id_counter},0,0,20".encode())
                 except:
                     pass
+
+handle_data()

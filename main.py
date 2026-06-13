@@ -21,6 +21,10 @@ clock = time.Clock()
 
 all_players = {}
 
+players_img = image.load("images/players/png")
+enemy_img = image.load("images/enemy.png")
+bg_img = image.load("images/bg.png")
+
 def receive_data():
     global all_players, lose
     while True:
@@ -80,48 +84,57 @@ class Ball:
 
 
 # Ініціалізація гравця
-player = Ball(0, 0, 30, (0, 255, 100))
+ball = Ball(0, 0, 30, (0, 255, 100))
 
 # Генерація їжі (яблук)
 cells = [Ball(randint(-1000, 1000), randint(-1000, 1000), 10,
               (randint(50, 200), randint(50, 200), randint(50, 200))) for _ in range(500)]
+WORLD_SIZE = 4000
 
-running = True
+running, lose = True, False
 while running:
     for e in event.get():
-        if e.type == QUIT: running = False
+        if e.type == QUIT:
+            running = False
 
     window.fill((40, 40, 40))
 
-    # Логіка руху
-    keys = key.get_pressed()
-    speed = 15 * player.scale
-    if keys[K_UP]: player.y -= speed * ((1 / 100) * player.radius)
-    if keys[K_DOWN]: player.y += speed * ((1 / 100) * player.radius)
-    if keys[K_LEFT]: player.x -= speed * ((1 / 100) * player.radius)
-    if keys[K_RIGHT]: player.x += speed * ((1 / 100) * player.radius)
+    bg_scaled_size = int(WORLD_SIZE * ball.scale)
+    scaled_bg = transform.scale(bg_img, (bg_scaled_size, bg_scaled_size))
 
-    # Оновлення масштабу
-    player.scale = player.growth_limit / player.radius if player.radius > player.growth_limit else 1.0
+    base_bg_x = int((-2000 - ball.x) * ball.scale + size[0] // 2)
+    base_bg_y = int((-2000 - ball.y) * ball.scale + size[1] // 2)
 
-    # Логіка поїдання
-    to_remove = []
+    start_x = (base_bg_x % bg_scaled_size) - bg_scaled_size
+    start_y = (base_bg_y % bg_scaled_size) - bg_scaled_size
+
+    for x in range(start_x, size[0], bg_scaled_size):
+        for y in range(start_y, size[1], bg_scaled_size):
+            window.blit(scaled_bg, (x, y))
+
+    if not lose:
+        ball.update_player(cells)
+        # Відправка своїх координат на сервер
+        sock.send(f"{my_id},{int(ball.x)},{int(ball.y)},{int(ball.radius)},Player".encode())
+
+    # Малювання яблук
     for cell in cells:
-        # Малюємо їжу
-        cell.draw(window, player.x, player.y, player.scale)
+        cell.draw(window, ball.x, ball.y, ball.scale)
 
-        # Перевірка зіткнення
-        if player.collidecircle(cell.x, cell.y, cell.radius):
-            to_remove.append(cell)
-            player.radius += cell.radius * 0.2
+    # Малювання ворогів
+    for pid, data in all_players.items():
+        # Малюємо ворога як червоне коло
+        ox, oy, orad = data
+        sx = int((ox - ball.x) * ball.scale + size[0] // 2)
+        sy = int((oy - ball.y) * ball.scale + size[1] // 2)
+        r = max(4, int(orad * ball.scale))
 
-    for cell in to_remove:
-        cells.remove(cell)
-        # Додаємо нове яблуко замість з'їденого
-        # cells.append(Ball(randint(-1000, 1000), randint(-1000, 1000), 10, (200, 200, 0)))
+        scaled_enemy = transform.scale(enemy_img, ())
 
-    # Малювання гравця
-    player.draw(window, player.x, player.y, player.scale)
+    if not lose:
+        ball.draw(window, ball.x, ball.y, 1.0 if ball.radius < 60 else ball.scale)
+    else:
+        window.blit(f.render("U lose!", 1, (244, 0, 0)), (400, 500))
 
     display.update()
     clock.tick(60)
